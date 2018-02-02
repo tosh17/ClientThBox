@@ -1,4 +1,4 @@
-package ru.thstdio.clientthbox.user;
+package ru.thstdio.clientthbox.connect.message;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -11,10 +11,9 @@ public class Message {
     public static final String Request = "request";
     public static final String Data = "data";
 
-    public static final String TYPE_AUTH="auth";
 
-    public static final String STATUS_OK = "Ok";
-    public static final String STATUS_AUTH_ERROR_LOGIN="auth error login";
+
+
 
     static public String createMessage(String type, String date) {
         JSONObject json = new JSONObject();

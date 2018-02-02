@@ -1,36 +1,32 @@
 package ru.thstdio.clientthbox;
 
 
-import android.os.AsyncTask;
+import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.Socket;
+import com.squareup.otto.Subscribe;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import ru.thstdio.clientthbox.user.Message;
-import ru.thstdio.clientthbox.user.ParserJson;
-import ru.thstdio.clientthbox.user.User;
+import ru.thstdio.clientthbox.bus.BusProvider;
+import ru.thstdio.clientthbox.bus.event.ConnectEvent;
+import ru.thstdio.clientthbox.bus.event.LoginEvent;
+import ru.thstdio.clientthbox.bus.event.SignUp;
+import ru.thstdio.clientthbox.connect.ConnectThBox;
 
 public class Login extends AppCompatActivity {
 
-    private static final String SERVER_ADDR = "192.168.0.111";
-    private static final int SERVER_PORT = 8189;
-    private boolean status;
-    private Socket sock;
-    private DataInputStream in;
-    private DataOutputStream out;
 
     @BindView(R.id.loginCardView)
     View loginCardView;
@@ -38,11 +34,27 @@ public class Login extends AppCompatActivity {
     EditText loginUserName;
     @BindView(R.id.loginPassword)
     EditText loginPassword;
+    @BindView(R.id.loginPasswordSecond)
+    EditText loginPasswordSecond;
 
-    Animation shakeanimation ;
+    @BindView(R.id.loginButtonOk)
+    Button loginButtonOk;
+    @BindView(R.id.loginSignUp)
+    TextView loginSignUp;
+
+    @BindView(R.id.disconnect)
+    View disconnect;
+    @BindView(R.id.loginForm)
+    View loginForm;
+    @BindView(R.id.loginFormPasswordSecond)
+    View loginFormPasswordSecond;
+
+    Animation shakeanimation;
+    boolean isSignUp = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        BusProvider.getInstance().register(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login_layout);
         android.support.v7.app.ActionBar mActionBar = getSupportActionBar();
@@ -54,66 +66,54 @@ public class Login extends AppCompatActivity {
     @Override
     protected void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
+        Intent intent = new Intent(this, ConnectThBox.class);
+        intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_CONNECT);
+        startService(intent);
 
     }
 
     @OnClick(R.id.loginButtonOk)
-    public void clicLogin() {
-        login();
+    public void clickLogin() {
+        Intent intent = new Intent(this, ConnectThBox.class);
+        if (!isSignUp) {
+            intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_LOGIN);
+        }
+        else{
+            intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_SIGN_UP);
+        }
+        intent.putExtra(ConnectThBox.KEY_USER_NAME, loginUserName.getEditableText().toString());
+        intent.putExtra(ConnectThBox.KEY_USER_PASS, loginPassword.getEditableText().toString());
+        startService(intent);
+
     }
 
-    private void login() {
-        AsyncTask<Void, Void, String> ex = new AsyncTask<Void, Void, String>() {
-            User user;
+    @OnClick(R.id.loginSignUp)
+    public void clickSignUp() {
+        isSignUp = !isSignUp;
+        if (isSignUp) {
+            loginFormPasswordSecond.setVisibility(View.VISIBLE);
+        //    loginButtonOk.setEnabled(false);
+        }
+    }
 
-            @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
-                user = new User();
-                user.login = loginUserName.getEditableText().toString();
-                user.password = loginPassword.getEditableText().toString();
+    @Subscribe
+    public void onConnect(@NonNull ConnectEvent event) {
+        disconnect.setVisibility(View.GONE);
+        loginForm.setVisibility(View.VISIBLE);
+        loginButtonOk.setEnabled(true);
+    }
 
-            }
-
-            @Override
-            protected String doInBackground(Void... voids) {
-                if (sock == null) connect();
-                return sendAuth();
-            }
-
-            @Override
-            protected void onPostExecute(String s) {
-                super.onPostExecute(s);
-                if (ParserJson.parseAuthRequest(s))
-                    Toast.makeText(getApplication(), "Login", Toast.LENGTH_LONG).show();
-                else {
-                    loginCardView.startAnimation(shakeanimation);
-                    loginPassword.setText("");
-                }
-            }
-
-            private void connect() {
-                status = false;
-                try {
-                    sock = new Socket(SERVER_ADDR, SERVER_PORT);
-                    in = new DataInputStream(sock.getInputStream());
-                    out = new DataOutputStream(sock.getOutputStream());
-                    status = true;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            private String sendAuth() {
-                try {
-                    out.writeUTF(Message.createMessage(Message.TYPE_AUTH, user.getJson()));
-                    return in.readUTF();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return "error";
-            }
-        };
-        ex.execute();
+    @Subscribe
+    public void onLogin(@NonNull LoginEvent event) {
+        if (event.isLogin)
+            Toast.makeText(getApplication(), "Login", Toast.LENGTH_LONG).show();
+        else {
+            loginCardView.startAnimation(shakeanimation);
+            loginPassword.setText("");
+        }
+    }
+    @Subscribe
+    public void onSignUp(@NonNull SignUp event) {
+        Toast.makeText(getApplication(), "User Create", Toast.LENGTH_LONG).show();
     }
 }
