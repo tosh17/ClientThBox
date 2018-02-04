@@ -1,7 +1,8 @@
-package ru.thstdio.clientthbox;
+package ru.thstdio.clientthbox.ui;
 
 
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -11,19 +12,25 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.squareup.otto.Subscribe;
 
+import butterknife.BindDrawable;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import butterknife.OnTextChanged;
+import ru.thstdio.clientthbox.R;
 import ru.thstdio.clientthbox.bus.BusProvider;
 import ru.thstdio.clientthbox.bus.event.ConnectEvent;
 import ru.thstdio.clientthbox.bus.event.LoginEvent;
 import ru.thstdio.clientthbox.bus.event.SignUp;
+import ru.thstdio.clientthbox.bus.event.SignUpFreeLogin;
 import ru.thstdio.clientthbox.connect.ConnectThBox;
+import ru.thstdio.clientthbox.connect.message.MessageStatus;
+import ru.thstdio.clientthbox.ui.fragment.FolderView;
 
 public class Login extends AppCompatActivity {
 
@@ -52,6 +59,20 @@ public class Login extends AppCompatActivity {
     Animation shakeanimation;
     boolean isSignUp = false;
 
+    @BindDrawable(R.drawable.ic_login_ok)
+    Drawable icLoginOk;
+    @BindDrawable(R.drawable.ic_login_cancel)
+    Drawable icLoginCancel;
+    @BindView(R.id.loginIcUserName)
+    ImageView loginIcUserName;
+    @BindView(R.id.loginIcPassword1)
+    ImageView loginIcPassword1;
+    @BindView(R.id.loginIcPassword2)
+    ImageView loginIcPassword2;
+
+
+    private int MinSizeLogin = 3;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         BusProvider.getInstance().register(this);
@@ -61,6 +82,18 @@ public class Login extends AppCompatActivity {
         mActionBar.hide();
         ButterKnife.bind(this);
         shakeanimation = AnimationUtils.loadAnimation(this, R.anim.shake);
+        loginUserName.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean b) {
+
+                if (isSignUp && loginUserName.getEditableText().length() > MinSizeLogin) {
+                    Intent intent = new Intent(getApplicationContext(), ConnectThBox.class);
+                    intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_CHECK_USER);
+                    intent.putExtra(ConnectThBox.KEY_USER_NAME, loginUserName.getEditableText().toString());
+                    startService(intent);
+                }
+            }
+        });
     }
 
     @Override
@@ -77,8 +110,7 @@ public class Login extends AppCompatActivity {
         Intent intent = new Intent(this, ConnectThBox.class);
         if (!isSignUp) {
             intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_LOGIN);
-        }
-        else{
+        } else {
             intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_SIGN_UP);
         }
         intent.putExtra(ConnectThBox.KEY_USER_NAME, loginUserName.getEditableText().toString());
@@ -92,7 +124,27 @@ public class Login extends AppCompatActivity {
         isSignUp = !isSignUp;
         if (isSignUp) {
             loginFormPasswordSecond.setVisibility(View.VISIBLE);
-        //    loginButtonOk.setEnabled(false);
+            //    loginButtonOk.setEnabled(false);
+        }
+    }
+
+    @OnTextChanged(R.id.loginPassword)
+    public void onTextChangePassword() {
+        if (isSignUp) checkPassword();
+    }
+
+    @OnTextChanged(R.id.loginPasswordSecond)
+    public void onTextChangePassword2() {
+        if (isSignUp) checkPassword();
+    }
+
+    private void checkPassword() {
+        if (loginPassword.getEditableText().toString().equals(loginPasswordSecond.getEditableText().toString())) {
+            setIcon(loginIcPassword1, true);
+            setIcon(loginIcPassword2, true);
+        } else {
+            setIcon(loginIcPassword1, false);
+            setIcon(loginIcPassword2, false);
         }
     }
 
@@ -106,14 +158,34 @@ public class Login extends AppCompatActivity {
     @Subscribe
     public void onLogin(@NonNull LoginEvent event) {
         if (event.isLogin)
-            Toast.makeText(getApplication(), "Login", Toast.LENGTH_LONG).show();
+            toMainActivity();
         else {
             loginCardView.startAnimation(shakeanimation);
             loginPassword.setText("");
         }
     }
+
     @Subscribe
     public void onSignUp(@NonNull SignUp event) {
-        Toast.makeText(getApplication(), "User Create", Toast.LENGTH_LONG).show();
+        if (event.signUpState.equals(MessageStatus.OK)) toMainActivity();
+    }
+
+    @Subscribe
+    public void onSignUpLoginBusy(@NonNull SignUpFreeLogin event) {
+        setIcon(loginIcUserName, event.isLoginFree);
+    }
+
+    public void setIcon(ImageView image, boolean status) {
+        image.setVisibility(View.VISIBLE);
+        if (status) image.setImageDrawable(icLoginOk);
+        else image.setImageDrawable(icLoginCancel);
+    }
+
+    public void toMainActivity() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(MainActivity.KEY_USER_NAME, loginUserName.getText().toString());
+        startActivity(intent);
+        BusProvider.getInstance().unregister(this);
+        this.finish();
     }
 }

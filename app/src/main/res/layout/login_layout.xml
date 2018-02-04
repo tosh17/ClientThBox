@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_login"
-    tools:context="ru.thstdio.clientthbox.Login">
+    tools:context="ru.thstdio.clientthbox.ui.Login">
 
 
     <Button
@@ -39,7 +39,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:visibility="gone">
+            android:visibility="visible">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -79,6 +79,7 @@
                     android:layout_marginEnd="8dp"
                     android:layout_marginStart="8dp"
                     android:ems="10"
+                    android:layout_weight="1"
                     android:hint="Password"
                     android:inputType="textPassword"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -87,8 +88,8 @@
 
                 <ImageView
                     android:id="@+id/loginIcPassword1"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
                     android:layout_gravity="center"
                     android:layout_weight="1"
                     android:visibility="gone"
@@ -108,14 +109,15 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
                     android:layout_marginStart="8dp"
+                    android:layout_weight="1"
                     android:ems="10"
                     android:hint="Repeat Password"
                     android:inputType="textPassword" />
 
                 <ImageView
                     android:id="@+id/loginIcPassword2"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
                     android:layout_gravity="center"
                     android:layout_weight="1"
                     android:visibility="gone"

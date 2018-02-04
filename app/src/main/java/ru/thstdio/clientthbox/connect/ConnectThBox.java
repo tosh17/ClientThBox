@@ -14,8 +14,10 @@ import java.util.TimerTask;
 
 import ru.thstdio.clientthbox.bus.BusProvider;
 import ru.thstdio.clientthbox.bus.event.ConnectEvent;
+import ru.thstdio.clientthbox.bus.event.FolderLoadEvent;
 import ru.thstdio.clientthbox.bus.event.LoginEvent;
 import ru.thstdio.clientthbox.bus.event.SignUp;
+import ru.thstdio.clientthbox.bus.event.SignUpFreeLogin;
 import ru.thstdio.clientthbox.connect.message.Message;
 import ru.thstdio.clientthbox.connect.message.MessageStatus;
 import ru.thstdio.clientthbox.connect.message.MessageType;
@@ -31,8 +33,10 @@ public class ConnectThBox extends Service {
     public static final int COMMAND_LOGIN = 2;
     public static final int COMMAND_SIGN_UP = 4;
     public static final int COMMAND_CHECK_USER = 3;
+    public static final int COMMAND_GET_FOLDER= 5;
     public static String KEY_USER_NAME = "KEY_USER_NAME";
     public static String KEY_USER_PASS = "KEY_USER_PASS";
+    public static String KEY_FOLDER_ID = "KEY_FOLDER_ID";
     private static final String SERVER_ADDR = "192.168.0.111";
     private static final int SERVER_PORT = 8189;
     private Socket sock;
@@ -51,6 +55,7 @@ public class ConnectThBox extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String name, pass;
+        long id;
         int command = intent.getIntExtra(KEY_COMMAND, COMMAND_NON);
         switch (command) {
             case COMMAND_CONNECT:
@@ -66,8 +71,39 @@ public class ConnectThBox extends Service {
                 pass = intent.getStringExtra(KEY_USER_PASS);
                 signUp(name, pass);
                 break;
+            case COMMAND_CHECK_USER:
+                name = intent.getStringExtra(KEY_USER_NAME);
+                checkUser(name);
+                break;
+            case COMMAND_GET_FOLDER:
+                id=intent.getLongExtra(KEY_FOLDER_ID,0);
+                getFolder(id);
+                break;
         }
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void getFolder(long idFolder) {
+        ioMessage(Message.createMessage(MessageType.REQUEST_ROOT_FOLDER, String.valueOf(idFolder)), new StringWainter() {
+            @Override
+            public void getString(String str) {
+                //todo error
+                if(str==null) return;
+                BusProvider.getInstance().post(
+                        new FolderLoadEvent(
+                                ParserJson.parseRequest(MessageType.REQUEST_ROOT_FOLDER, str)));
+            }
+        });
+    }
+
+    private void checkUser(String name) {
+        ioMessage(Message.createMessage(MessageType.SIGN_UP_FREE_USER, name), new StringWainter() {
+            @Override
+            public void getString(String str) {
+                BusProvider.getInstance().post(new SignUpFreeLogin(
+                        ParserJson.parseRequest(MessageType.SIGN_UP_FREE_USER, str).equals(MessageStatus.OK)));
+            }
+        });
     }
 
     private void signUp(String name, String pass) {
@@ -76,7 +112,7 @@ public class ConnectThBox extends Service {
             @Override
             public void getString(String str) {
                 BusProvider.getInstance().post(new SignUp(
-                        ParserJson.parseRequest(MessageType.SIGN_UP, str).equals(MessageStatus.OK)));
+                        ParserJson.parseRequest(MessageType.SIGN_UP, str)));
             }
         });
     }
@@ -143,7 +179,9 @@ public class ConnectThBox extends Service {
                 if (sock == null) connect();
                 try {
                     stream.sendString(strs[0]);
-                    return stream.readString();
+                    String msg=stream.readString();
+                    Log.d("INPUT",msg);
+                    return msg;
                 } catch (IOException e) {
                     return null;
                 } catch (ClassNotFoundException e) {

@@ -5,9 +5,9 @@ package ru.thstdio.clientthbox.bus.event;
  */
 
 public class SignUp {
-    public boolean isSignUp;
+    public String signUpState;
 
-    public SignUp(boolean isSignUp) {
-        this.isSignUp = isSignUp;
+    public SignUp(String signUpState) {
+        this.signUpState = signUpState;
     }
 }
