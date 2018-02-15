@@ -11,10 +11,6 @@ public class Message {
     public static final String Request = "request";
     public static final String Data = "data";
 
-
-
-
-
     static public String createMessage(String type, String date) {
         JSONObject json = new JSONObject();
         try {
@@ -36,4 +32,5 @@ public class Message {
 
         return json.toString();
     }
+
 }

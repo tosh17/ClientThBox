@@ -18,7 +18,7 @@
             android:id="@+id/ic_file"
             android:layout_width="64dp"
             android:layout_height="64dp"
-            android:gravity="center"
+            android:layout_gravity="center_horizontal"
             app:srcCompat="@drawable/ic_file" />
 
         <TextView

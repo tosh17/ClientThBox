@@ -1,7 +1,12 @@
 package ru.thstdio.clientthbox.ui;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.UiThread;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -11,11 +16,19 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.graphics.drawable.DrawerArrowDrawable;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.nononsenseapps.filepicker.FilePickerActivity;
+import com.nononsenseapps.filepicker.Utils;
+
+import java.io.File;
+import java.util.List;
+
 import ru.thstdio.clientthbox.R;
+import ru.thstdio.clientthbox.connect.ConnectThBox;
 import ru.thstdio.clientthbox.ui.fragment.FolderView;
 
 public class MainActivity extends AppCompatActivity
@@ -28,6 +41,7 @@ public class MainActivity extends AppCompatActivity
     Toolbar toolbar;
     boolean isRootFolder = true;
     Fragment fragment;
+    private int FILE_CODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +88,34 @@ public class MainActivity extends AppCompatActivity
                 }
             }
         });
+        FloatingActionButton fab = findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showFilePicker();
+            }
+        });
+    }
+
+    private void showFilePicker() {
+
+        Intent i = new Intent(getApplicationContext(), FilePickerActivity.class);
+        i.setPackage(getApplicationContext().getPackageName());
+        // This works if you defined the intent filter
+        // Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+
+        // Set these depending on your use case. These are the defaults.
+        i.putExtra(FilePickerActivity.EXTRA_ALLOW_MULTIPLE, false);
+        i.putExtra(FilePickerActivity.EXTRA_ALLOW_CREATE_DIR, false);
+        i.putExtra(FilePickerActivity.EXTRA_MODE, FilePickerActivity.MODE_FILE);
+
+        // Configure initial directory by specifying a String.
+        // You could specify a String like "/storage/emulated/0/", but that can
+        // dangerous. Always use Android's API calls to get paths to the SD-card or
+        // internal memory.
+        i.putExtra(FilePickerActivity.EXTRA_START_PATH, Environment.getExternalStorageDirectory().getPath());
+
+        startActivityForResult(i, FILE_CODE);
     }
 
     @Override
@@ -139,7 +181,6 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-
     @Override
     @UiThread
     public void setFragmentTitle(String title, boolean isHumburger) {
@@ -148,6 +189,24 @@ public class MainActivity extends AppCompatActivity
         if (isHumburger) toolbar.setNavigationIcon(R.drawable.ic_humburger);
         else {
             toolbar.setNavigationIcon(R.drawable.ic_back);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        if (requestCode == FILE_CODE && resultCode == Activity.RESULT_OK) {
+            // Use the provided utility method to parse the result
+            List<Uri> files = Utils.getSelectedFilesFromResult(intent);
+            for (Uri uri : files) {
+
+                File file = Utils.getFileForUri(uri);
+                // Do something with the result...
+                Log.d("Picker", file.toString());
+                Intent intentToServer = new Intent(this, ConnectThBox.class);
+                intentToServer.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_UPLOAD_FILE);
+                intentToServer.putExtra(ConnectThBox.KEY_FILE_URI, file);
+                startService(intentToServer);
+            }
         }
     }
 }

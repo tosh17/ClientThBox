@@ -9,4 +9,7 @@ public class MessageType {
     public static final String SIGN_UP="signUP";
     public static final String SIGN_UP_FREE_USER ="freeUser" ;
     public static final String REQUEST_ROOT_FOLDER="requestRootFolder";
+    public static final String REQUEST_FILE_UPLOAD="uploadFile";
+    public static final String REQUEST_FILE_DOWNLOAD="downloadFile";
+
 }

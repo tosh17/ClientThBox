@@ -1,4 +1,4 @@
-package ru.thstdio.clientthbox.connect;
+package ru.thstdio.clientthbox.connect.stream;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -25,6 +25,18 @@ public class ObjectStream implements Stream {
     @Override
     public String readString() throws IOException, ClassNotFoundException {
         return (String) in.readObject();
+    }
+
+    @Override
+    public void sendObject(Object object) throws IOException {
+        out.writeObject(object);
+        out.flush();
+    }
+
+
+    @Override
+    public Object readObject() throws IOException, ClassNotFoundException {
+        return in.readObject();
     }
 
     @Override

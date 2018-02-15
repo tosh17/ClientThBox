@@ -8,6 +8,7 @@ public class PFile {
     public String name;
     public int size;
     public long parent;
+    public FileType type;
 
     public PFile setId(long id) {
         this.id = id;
@@ -36,5 +37,13 @@ public class PFile {
         json.put("parent",parent);
         json.put("size",size);
         return json;
+    }
+    public FileType getType(){
+        if(type==null){
+            String[] temp =name.split("\\.");
+            if(temp.length>1) type=(FileType.convertType(temp[temp.length-1]));
+            else type=FileType.None;
+        }
+        return type;
     }
 }

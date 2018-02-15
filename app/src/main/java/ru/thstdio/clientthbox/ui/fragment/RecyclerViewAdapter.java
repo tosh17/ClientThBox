@@ -11,20 +11,19 @@ import java.util.List;
 import java.util.Map;
 
 import ru.thstdio.clientthbox.R;
+import ru.thstdio.clientthbox.fileutil.FileType;
 import ru.thstdio.clientthbox.fileutil.PDir;
 import ru.thstdio.clientthbox.fileutil.PFile;
 
 public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewHolders> {
-    public static final int ICON_FILE = 1;
-    public static final int ICON_FOLDER = 0;
 
     private List<PFile> itemList;
     private Context context;
-    Map<Integer, Drawable> icon;
+    Map<FileType, Drawable> icon;
     RecyclerViewHolders.OnClickHolderItem onClickHolderItem;
 
 
-    public RecyclerViewAdapter(Context context, List<PFile> itemList, Map<Integer, Drawable> icon,RecyclerViewHolders.OnClickHolderItem onClickHolderItem) {
+    public RecyclerViewAdapter(Context context, List<PFile> itemList, Map<FileType, Drawable> icon, RecyclerViewHolders.OnClickHolderItem onClickHolderItem) {
         this.itemList = itemList;
         this.context = context;
         this.icon = icon;
@@ -43,11 +42,11 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewHolder
     public void onBindViewHolder(RecyclerViewHolders holder, int position) {
 
         if (itemList.get(position) instanceof PDir) {
-            holder.icon.setImageDrawable(icon.get(ICON_FOLDER));
+            holder.icon.setImageDrawable(icon.get(FileType.Folder));
             holder.isFolder=true;
         } else {
 
-            holder.icon.setImageDrawable(icon.get(ICON_FILE));
+            holder.icon.setImageDrawable(icon.get(itemList.get(position).getType()));
         }
         holder.name.setText(itemList.get(position).name);
         holder.click=onClickHolderItem;

@@ -4,7 +4,6 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import ru.thstdio.clientthbox.R;
 
@@ -21,7 +20,7 @@ public class RecyclerViewHolders extends RecyclerView.ViewHolder implements View
     OnClickHolderItem click;
 
     public interface OnClickHolderItem {
-        void onClickHolderItem(long id,boolean isFolder);
+        void onClickHolderItem(long id, String text, boolean isFolder);
     }
 
     public RecyclerViewHolders(View itemView) {
@@ -33,7 +32,7 @@ public class RecyclerViewHolders extends RecyclerView.ViewHolder implements View
 
     @Override
     public void onClick(View view) {
-       click.onClickHolderItem(id,isFolder);
+       click.onClickHolderItem(id,name.getText().toString(),isFolder);
 
     }
 }

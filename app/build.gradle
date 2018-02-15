@@ -36,6 +36,7 @@ dependencies {
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
     compile "com.jakewharton:butterknife:$_butterknifeVersion"
     compile 'com.squareup:otto:1.3.8'
+    compile 'com.nononsenseapps:filepicker:4.1.0'
     annotationProcessor "com.jakewharton:butterknife-compiler:$_butterknifeVersion"
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'

@@ -29,9 +29,9 @@ import ru.thstdio.clientthbox.R;
 import ru.thstdio.clientthbox.bus.BusProvider;
 import ru.thstdio.clientthbox.bus.event.FolderLoadEvent;
 import ru.thstdio.clientthbox.connect.ConnectThBox;
+import ru.thstdio.clientthbox.fileutil.FileType;
 import ru.thstdio.clientthbox.fileutil.PDir;
 import ru.thstdio.clientthbox.fileutil.PFile;
-import ru.thstdio.clientthbox.ui.MainActivity;
 import ru.thstdio.clientthbox.user.ParserJson;
 
 /**
@@ -47,8 +47,18 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
     Drawable icFile;
     @BindDrawable(R.drawable.ic_file_folder)
     Drawable icFolder;
+    @BindDrawable(R.drawable.ic_file_txt)
+    Drawable icFileTxt;
+    @BindDrawable(R.drawable.ic_file_movies)
+    Drawable icFileMovies;
+    @BindDrawable(R.drawable.ic_file_audio)
+    Drawable icFileAudio;
+    @BindDrawable(R.drawable.ic_file_pic)
+    Drawable icFilePic;
+    @BindDrawable(R.drawable.ic_file_arc)
+    Drawable icFileArc;
 
-    Map<Integer,Drawable> icon=new HashMap<Integer,Drawable>();
+    Map<FileType, Drawable> icon = new HashMap<FileType, Drawable>();
     PDir root;
     List<PFile> fileItem;
 
@@ -60,12 +70,13 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
     }
 
     public interface FragmentCallback {
-        public void setFragmentTitle(String title,boolean isHumburger);
+        public void setFragmentTitle(String title, boolean isHumburger);
     }
+
     public static FolderView newInstance(FragmentCallback callback) {
 
         FolderView fragment = new FolderView();
-        fragment.callback=callback;
+        fragment.callback = callback;
         return fragment;
     }
 
@@ -95,15 +106,20 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
         GridLayoutManager lLayout = new GridLayoutManager(getContext(), 4);
         rView.setHasFixedSize(true);
         rView.setLayoutManager(lLayout);
-        icon.put(RecyclerViewAdapter.ICON_FILE,icFile);
-        icon.put(RecyclerViewAdapter.ICON_FOLDER,icFolder);
+        icon.put(FileType.None, icFile);
+        icon.put(FileType.Folder, icFolder);
+        icon.put(FileType.Txt, icFileTxt);
+        icon.put(FileType.Video, icFileMovies);
+        icon.put(FileType.Image, icFilePic);
+        icon.put(FileType.Audio, icFileAudio);
+        icon.put(FileType.Arc, icFileArc);
         return rootView;
     }
 
     @Subscribe
     public void onGetFolder(@NonNull FolderLoadEvent event) {
         try {
-            root= ParserJson.parseFolder(event.folderStr);
+            root = ParserJson.parseFolder(event.folderStr);
             createAdapter();
         } catch (JSONException e) {
             e.printStackTrace();
@@ -111,27 +127,37 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
         rView.setAdapter(rcAdapter);
     }
 
-     public void createAdapter(){
-        if(root!=null){
-            if(fileItem==null)fileItem=new ArrayList<>(); else fileItem.clear();
-            if(root.id!=0)callback.setFragmentTitle(root.name,false);
-            else callback.setFragmentTitle("",true);
-            for(PDir d:root.dirs) fileItem.add(d);
-            for(PFile f:root.files) fileItem.add(f);
-            rcAdapter = new RecyclerViewAdapter(getContext(), fileItem,icon,this);
-
+    public void createAdapter() {
+        if (root != null) {
+            if (fileItem == null) fileItem = new ArrayList<>();
+            else fileItem.clear();
+            if (root.id != 0) callback.setFragmentTitle(root.name, false);
+            else callback.setFragmentTitle("", true);
+            for (PDir d : root.dirs) fileItem.add(d);
+            for (PFile f : root.files) fileItem.add(f);
+            rcAdapter = new RecyclerViewAdapter(getContext(), fileItem, icon, this);
         }
-     }
+    }
 
     @Override
-    public void onClickHolderItem(long id,boolean isFolder) {
-        if(isFolder)sendRequest(id);
+    public void onClickHolderItem(long id, String name, boolean isFolder) {
+        if (isFolder) sendRequest(id);
+        else loadFile(id,name);
         Toast.makeText(getContext(), "Clicked ID = " + id, Toast.LENGTH_SHORT).show();
     }
-    public void sendRequest(long id){
-        Intent intent =new Intent(getContext(),ConnectThBox.class);
-        intent.putExtra(ConnectThBox.KEY_COMMAND,ConnectThBox.COMMAND_GET_FOLDER);
-        intent.putExtra(ConnectThBox.KEY_FOLDER_ID,id);
+
+    private void loadFile(long id,String name) {
+        Intent intent = new Intent(getContext(), ConnectThBox.class);
+        intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_DOWNLOAD_FILE);
+        intent.putExtra(ConnectThBox.KEY_FILE_ID, id);
+        intent.putExtra(ConnectThBox.KEY_FILE_NAME, name);
+        getActivity().startService(intent);
+    }
+
+    public void sendRequest(long id) {
+        Intent intent = new Intent(getContext(), ConnectThBox.class);
+        intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_GET_FOLDER);
+        intent.putExtra(ConnectThBox.KEY_FOLDER_ID, id);
         getActivity().startService(intent);
     }
 
