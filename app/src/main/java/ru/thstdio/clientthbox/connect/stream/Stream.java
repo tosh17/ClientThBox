@@ -8,4 +8,7 @@ public interface Stream {
    public void sendObject(Object object) throws IOException;
    public Object readObject() throws IOException, ClassNotFoundException;
    public void close() throws IOException;
+   public boolean connect();
+   public boolean isConnected();
+
 }

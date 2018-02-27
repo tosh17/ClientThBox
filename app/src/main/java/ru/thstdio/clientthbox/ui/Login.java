@@ -2,8 +2,10 @@ package ru.thstdio.clientthbox.ui;
 
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -75,12 +77,16 @@ public class Login extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+
+
         BusProvider.getInstance().register(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login_layout);
-        android.support.v7.app.ActionBar mActionBar = getSupportActionBar();
+         android.support.v7.app.ActionBar mActionBar = getSupportActionBar();
         mActionBar.hide();
         ButterKnife.bind(this);
+  connect();
         shakeanimation = AnimationUtils.loadAnimation(this, R.anim.shake);
         loginUserName.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
@@ -99,12 +105,12 @@ public class Login extends AppCompatActivity {
     @Override
     protected void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        Intent intent = new Intent(this, ConnectThBox.class);
-        intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_CONNECT);
-        startService(intent);
-
-    }
-
+            }
+public void connect(){
+    Intent intent = new Intent(this, ConnectThBox.class);
+    intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_CONNECT);
+    startService(intent);
+}
     @OnClick(R.id.loginButtonOk)
     public void clickLogin() {
         Intent intent = new Intent(this, ConnectThBox.class);
@@ -153,6 +159,14 @@ public class Login extends AppCompatActivity {
         disconnect.setVisibility(View.GONE);
         loginForm.setVisibility(View.VISIBLE);
         loginButtonOk.setEnabled(true);
+        SharedPreferences preff = PreferenceManager.getDefaultSharedPreferences(this);
+        String user = preff.getString("UserName","");
+        String pass =preff.getString("UserPass","");
+        loginUserName.setText(user);
+        loginPassword.setText(pass);
+        if(!user.equals("")){
+            clickLogin();
+        }
     }
 
     @Subscribe
@@ -184,8 +198,19 @@ public class Login extends AppCompatActivity {
     public void toMainActivity() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra(MainActivity.KEY_USER_NAME, loginUserName.getText().toString());
+        SharedPreferences preff = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor edit = preff.edit();
+        edit.putString("UserName",loginUserName.getText().toString());
+        edit.putString("UserPass",loginPassword.getText().toString());
+        edit.commit();
         startActivity(intent);
         BusProvider.getInstance().unregister(this);
         this.finish();
+    }
+
+    @Override
+    protected void onStop() {
+//        BusProvider.getInstance().unregister(this);
+        super.onStop();
     }
 }

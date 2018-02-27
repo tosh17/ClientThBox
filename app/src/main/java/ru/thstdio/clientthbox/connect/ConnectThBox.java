@@ -3,16 +3,12 @@ package ru.thstdio.clientthbox.connect;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
-import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.Socket;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -26,8 +22,10 @@ import ru.thstdio.clientthbox.connect.message.Message;
 import ru.thstdio.clientthbox.connect.message.MessageFile;
 import ru.thstdio.clientthbox.connect.message.MessageStatus;
 import ru.thstdio.clientthbox.connect.message.MessageType;
+import ru.thstdio.clientthbox.connect.stream.MessageIO;
 import ru.thstdio.clientthbox.connect.stream.ObjectStream;
 import ru.thstdio.clientthbox.connect.stream.Stream;
+import ru.thstdio.clientthbox.fileutil.FileType;
 import ru.thstdio.clientthbox.fileutil.PDir;
 import ru.thstdio.clientthbox.user.ParserJson;
 import ru.thstdio.clientthbox.user.User;
@@ -43,21 +41,20 @@ public class ConnectThBox extends Service {
     public static final int COMMAND_CHECK_USER = 3;
     public static final int COMMAND_GET_FOLDER = 5;
     public static final int COMMAND_DOWNLOAD_FILE = 6;
-    public static final int COMMAND_UPLOAD_FILE= 7;
+    public static final int COMMAND_UPLOAD_FILE = 7;
+    public static final int COMMAND_CREATE_FOLDER = 8;
+    public static final int COMMAND_DELETE_FILE = 9;
+    public static final int COMMAND_DELETE_FOLDER = 9;
     public static String KEY_USER_NAME = "KEY_USER_NAME";
     public static String KEY_USER_PASS = "KEY_USER_PASS";
     public static String KEY_FOLDER_ID = "KEY_FOLDER_ID";
     public static String KEY_FILE_ID = "KEY_FOLDER_ID";
     public static String KEY_FILE_NAME = "KEY_FILE_NAME";
-    public static String KEY_FILE_URI="KEY_FILE_URI";
-
-
-    private static final String SERVER_ADDR = "192.168.0.106";
-    private static final int SERVER_PORT = 8189;
-    private Socket sock;
+    public static String KEY_FILE_URI = "KEY_FILE_URI";
+    public static String KEY_STR = "KEY_STR";
     private Stream stream;
     private PDir localFolder;
-
+    private MessageIO messHelper;
 
 
     public ConnectThBox() {
@@ -104,29 +101,47 @@ public class ConnectThBox extends Service {
                 break;
             case COMMAND_UPLOAD_FILE:
                 file = (File) intent.getSerializableExtra(KEY_FILE_URI);
-                upLoadFile(file,0);
+                id = intent.getLongExtra(KEY_FOLDER_ID, 0);
+                upLoadFile(file, id);
+                break;
+            case COMMAND_CREATE_FOLDER:
+                name = intent.getStringExtra(KEY_STR);
+                id = intent.getLongExtra(KEY_FOLDER_ID, 0);
+                createFolder(name, id);
                 break;
         }
         return super.onStartCommand(intent, flags, startId);
     }
 
-    private void upLoadFile(final File file, final int idFolder) {
-        ioMessage(Message.createMessage(MessageType.REQUEST_FILE_UPLOAD, MessageFile.createNewFile(file,idFolder)), new StringWainter() {
+    private void createFolder(String name, final long idFolderParents) {
+        messHelper.ioMessage(Message.createMessage(MessageType.REQUEST_FOLDER_CREATE, MessageFile.createNewFolder(name, idFolderParents)), new StringWainter() {
+            @Override
+            public void getString(String str) {
+                if (str == null) return;
+                String status=ParserJson.parseRequest(MessageType.REQUEST_FOLDER_CREATE,str);
+                if (status.equals(MessageStatus.OK)) {
+                    getFolder(idFolderParents);
+                }
+            }
+        });
+    }
+
+    private void upLoadFile(final File file, final long idFolder) {
+        messHelper.ioMessage(Message.createMessage(MessageType.REQUEST_FILE_UPLOAD, MessageFile.createNewFile(file, idFolder)), new StringWainter() {
             @Override
             public void getString(String str) {
                 //todo error
-                Log.d("Test",str);
                 if (str == null) return;
-                String status=MessageStatus.OK;
-                if( status.equals(MessageStatus.OK)){
-                    ioMessageUpLoad(file, idFolder, new ObjectWainter() {
+                String status=ParserJson.parseRequest(MessageType.REQUEST_FILE_UPLOAD,str);
+                if (status.equals(MessageStatus.OK)) {
+                    messHelper.ioMessageUpLoad(file, idFolder, new ObjectWainter() {
                         @Override
                         public void getObject(Object object) {
 
                         }
                     });
+                } else {
                 }
-                else{}
 
 
             }
@@ -134,16 +149,18 @@ public class ConnectThBox extends Service {
     }
 
     private void loadFile(long id, String nameFile) {
-        ioMessageLoad(Message.createMessage(MessageType.REQUEST_FILE_DOWNLOAD, String.valueOf(id)), nameFile, new ObjectWainter() {
+        messHelper.ioMessageLoad(Message.createMessage(MessageType.REQUEST_FILE_DOWNLOAD, String.valueOf(id)), nameFile, new ObjectWainter() {
             @Override
             public void getObject(Object object) {
-
+                Intent i=FileType.convertToIntent((String)object);
+                PackageManager packageManager = getPackageManager(); if (i.resolveActivity(packageManager) != null)
+                    startActivity(FileType.convertToIntent((String)object));
             }
         });
     }
 
     private void getFolder(long idFolder) {
-        ioMessage(Message.createMessage(MessageType.REQUEST_ROOT_FOLDER, String.valueOf(idFolder)), new StringWainter() {
+        messHelper.ioMessage(Message.createMessage(MessageType.REQUEST_ROOT_FOLDER, String.valueOf(idFolder)), new StringWainter() {
             @Override
             public void getString(String str) {
                 //todo error
@@ -156,7 +173,7 @@ public class ConnectThBox extends Service {
     }
 
     private void checkUser(String name) {
-        ioMessage(Message.createMessage(MessageType.SIGN_UP_FREE_USER, name), new StringWainter() {
+        messHelper.ioMessage(Message.createMessage(MessageType.SIGN_UP_FREE_USER, name), new StringWainter() {
             @Override
             public void getString(String str) {
                 BusProvider.getInstance().post(new SignUpFreeLogin(
@@ -167,7 +184,7 @@ public class ConnectThBox extends Service {
 
     private void signUp(String name, String pass) {
         User user = new User(name, pass);
-        ioMessage(Message.createMessage(MessageType.SIGN_UP, user.getJson()), new StringWainter() {
+        messHelper.ioMessage(Message.createMessage(MessageType.SIGN_UP, user.getJson()), new StringWainter() {
             @Override
             public void getString(String str) {
                 BusProvider.getInstance().post(new SignUp(
@@ -180,14 +197,17 @@ public class ConnectThBox extends Service {
         final AsyncTask<Void, Void, Boolean> ex = new AsyncTask<Void, Void, Boolean>() {
             @Override
             protected Boolean doInBackground(Void... voids) {
-                if (sock == null) return connect();
-                return true;
+                if (stream == null) {
+                    stream = new ObjectStream();
+                    messHelper = new MessageIO(stream);
+                    return stream.connect();
+                } else return stream.isConnected();
+
             }
 
             @Override
             protected void onPostExecute(Boolean aBoolean) {
                 BusProvider.getInstance().post(new ConnectEvent(aBoolean));
-
                 super.onPostExecute(aBoolean);
             }
         };
@@ -205,19 +225,9 @@ public class ConnectThBox extends Service {
         }, 30000);
     }
 
-    private boolean connect() {
-        try {
-            sock = new Socket(SERVER_ADDR, SERVER_PORT);
-            stream = new ObjectStream(sock);
-        } catch (IOException e) {
-            return false;
-        }
-        return true;
-    }
-
     private void login(String name, String pass) {
         User user = new User(name, pass);
-        ioMessage(Message.createMessage(MessageType.AUTH, user.getJson()), new StringWainter() {
+         messHelper.ioMessage(Message.createMessage(MessageType.AUTH, user.getJson()), new StringWainter() {
             @Override
             public void getString(String str) {
                 BusProvider.getInstance().post(new LoginEvent(
@@ -227,104 +237,5 @@ public class ConnectThBox extends Service {
 
     }
 
-    private void ioMessage(final String str, final StringWainter listern) {
 
-        AsyncTask<String, String, String> ex = new AsyncTask<String, String, String>() {
-
-            String mess;
-
-            @Override
-            protected String doInBackground(String... strs) {
-                if (sock == null) connect();
-                try {
-                    stream.sendString(strs[0]);
-                    String msg = stream.readString();
-                    Log.d("INPUT", msg);
-                    return msg;
-                } catch (IOException e) {
-                    return null;
-                } catch (ClassNotFoundException e) {
-                    return null;
-                }
-            }
-
-            @Override
-            protected void onPostExecute(String s) {
-                super.onPostExecute(s);
-                listern.getString(s);
-            }
-
-        };
-        ex.execute(str);
-    }
-
-    private void ioMessageLoad(final String str, final String nameFile, final ObjectWainter listern) {
-
-        AsyncTask<String, String, Object> ex = new AsyncTask<String, String, Object>() {
-
-            String mess;
-
-            @Override
-            protected Object doInBackground(String... strs) {
-                if (sock == null) connect();
-                long fileSize = 0;
-
-                try {
-                    stream.sendString(strs[0]);
-                    Object msg = null;
-                    msg = stream.readObject();
-                    try (FileOutputStream fos = new FileOutputStream(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + nameFile)) {
-                        // перевод строки в байты
-
-                        byte[] buffer = (byte[]) msg;
-                        fos.write(buffer, 0, buffer.length);
-
-                    } catch (IOException ex) {
-                        Log.d("INPUT", "Error write file");
-                    }
-                    return msg;
-                } catch (IOException e) {
-                    return null;
-                } catch (ClassNotFoundException e) {
-                    return null;
-                }
-            }
-
-            @Override
-            protected void onPostExecute(Object s) {
-                super.onPostExecute(s);
-                listern.getObject(s);
-            }
-
-        };
-        ex.execute(str);
-    }
-    private void ioMessageUpLoad(final File file,long idFolder, final ObjectWainter listern) {
-
-        AsyncTask<String, String, Object> ex = new AsyncTask<String, String, Object>() {
-
-            String mess;
-
-            @Override
-            protected Object doInBackground(String... strs) {
-                byte[] buffer = null;
-                try (FileInputStream fin = new FileInputStream(file.getCanonicalPath())) {
-             //       System.out.println("Размер файла: " + fin.available() + " байт(а)");
-                    buffer = new byte[fin.available()];
-                    fin.read(buffer, 0, fin.available());
-                    stream.sendObject(buffer);
-                } catch (IOException ex) {
-                }
-                           return null;
-            }
-
-            @Override
-            protected void onPostExecute(Object s) {
-                super.onPostExecute(s);
-                listern.getObject(s);
-            }
-
-        };
-        ex.execute();
-    }
 }

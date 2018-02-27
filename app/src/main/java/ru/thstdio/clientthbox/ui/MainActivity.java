@@ -29,6 +29,7 @@ import java.util.List;
 
 import ru.thstdio.clientthbox.R;
 import ru.thstdio.clientthbox.connect.ConnectThBox;
+import ru.thstdio.clientthbox.fileutil.PDir;
 import ru.thstdio.clientthbox.ui.fragment.FolderView;
 
 public class MainActivity extends AppCompatActivity
@@ -42,6 +43,7 @@ public class MainActivity extends AppCompatActivity
     boolean isRootFolder = true;
     Fragment fragment;
     private int FILE_CODE = 1;
+    private long currentFolder=0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -133,7 +135,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
+        //   getMenuInflater().inflate(R.menu.main, menu);
         this.menu = menu;
         return true;
     }
@@ -183,12 +185,15 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     @UiThread
-    public void setFragmentTitle(String title, boolean isHumburger) {
-        isRootFolder = isHumburger;
-        setTitle(title);
-        if (isHumburger) toolbar.setNavigationIcon(R.drawable.ic_humburger);
-        else {
+    public void setFragmentTitle(PDir root) {
+        isRootFolder = root.id == 0;
+        currentFolder=root.id;
+        if (isRootFolder) {
+            toolbar.setNavigationIcon(R.drawable.ic_humburger);
+            setTitle("");
+        } else {
             toolbar.setNavigationIcon(R.drawable.ic_back);
+            setTitle(root.name);
         }
     }
 
@@ -205,6 +210,7 @@ public class MainActivity extends AppCompatActivity
                 Intent intentToServer = new Intent(this, ConnectThBox.class);
                 intentToServer.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_UPLOAD_FILE);
                 intentToServer.putExtra(ConnectThBox.KEY_FILE_URI, file);
+                intentToServer.putExtra(ConnectThBox.KEY_FOLDER_ID, currentFolder);
                 startService(intentToServer);
             }
         }

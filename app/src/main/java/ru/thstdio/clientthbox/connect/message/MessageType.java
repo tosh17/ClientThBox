@@ -10,6 +10,11 @@ public class MessageType {
     public static final String SIGN_UP_FREE_USER ="freeUser" ;
     public static final String REQUEST_ROOT_FOLDER="requestRootFolder";
     public static final String REQUEST_FILE_UPLOAD="uploadFile";
+    public static final String REQUEST_FOLDER_CREATE="createFolder";
     public static final String REQUEST_FILE_DOWNLOAD="downloadFile";
+    public static final String REQUEST_FILE_DELETE="fileDelete";
+    public static final String REQUEST_FOLDER_DELETE="folderDelete";
+    public static final String REQUEST_FOLDER_FULL_DELETE="folderFullDelete";
+
 
 }

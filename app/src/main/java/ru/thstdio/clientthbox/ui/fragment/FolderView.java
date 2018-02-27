@@ -1,16 +1,22 @@
 package ru.thstdio.clientthbox.ui.fragment;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.squareup.otto.Subscribe;
@@ -40,6 +46,7 @@ import ru.thstdio.clientthbox.user.ParserJson;
 
 public class FolderView extends Fragment implements RecyclerViewHolders.OnClickHolderItem {
 
+    private static final int COLUMNS_COUNT = 3;
     @BindView(R.id.recycler_view)
     RecyclerView rView;
 
@@ -70,7 +77,7 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
     }
 
     public interface FragmentCallback {
-        public void setFragmentTitle(String title, boolean isHumburger);
+        public void setFragmentTitle(PDir title);
     }
 
     public static FolderView newInstance(FragmentCallback callback) {
@@ -96,6 +103,7 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         sendRequest(0);
+        setHasOptionsMenu(true);
     }
 
     @Override
@@ -103,7 +111,7 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_folder_view, container, false);
         ButterKnife.bind(this, rootView);
-        GridLayoutManager lLayout = new GridLayoutManager(getContext(), 4);
+        GridLayoutManager lLayout = new GridLayoutManager(getContext(), COLUMNS_COUNT);
         rView.setHasFixedSize(true);
         rView.setLayoutManager(lLayout);
         icon.put(FileType.None, icFile);
@@ -131,8 +139,8 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
         if (root != null) {
             if (fileItem == null) fileItem = new ArrayList<>();
             else fileItem.clear();
-            if (root.id != 0) callback.setFragmentTitle(root.name, false);
-            else callback.setFragmentTitle("", true);
+            callback.setFragmentTitle(root);
+
             for (PDir d : root.dirs) fileItem.add(d);
             for (PFile f : root.files) fileItem.add(f);
             rcAdapter = new RecyclerViewAdapter(getContext(), fileItem, icon, this);
@@ -161,4 +169,42 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
         getActivity().startService(intent);
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+       // super.onCreateOptionsMenu(menu, inflater);
+         inflater.inflate(R.menu.folder_view_menu, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        createFolder();
+        return super.onOptionsItemSelected(item);
+
+    }
+
+    void createFolder(){
+        AlertDialog.Builder ad = new AlertDialog.Builder(getContext());
+        final EditText nameFolder=new EditText(getContext());
+        ad.setView(nameFolder);
+        ad.setMessage(getString(R.string.dialog_create_folder)); // сообщение
+        ad.setPositiveButton(getString(R.string.dialog_create_folder_button_ok), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                String text=nameFolder.getText().toString();
+                Intent intent = new Intent(getContext(), ConnectThBox.class);
+                intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_CREATE_FOLDER);
+                intent.putExtra(ConnectThBox.KEY_STR, text);
+                intent.putExtra(ConnectThBox.KEY_FOLDER_ID, root.id);
+                getActivity().startService(intent);
+            }
+        }).setNegativeButton(getString(R.string.dialog_create_folder_cancel), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.cancel();
+            }
+        });
+        ad.show();
+
+
+    }
 }
