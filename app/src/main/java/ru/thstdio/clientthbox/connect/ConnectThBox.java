@@ -16,6 +16,7 @@ import ru.thstdio.clientthbox.bus.BusProvider;
 import ru.thstdio.clientthbox.bus.event.ConnectEvent;
 import ru.thstdio.clientthbox.bus.event.FolderLoadEvent;
 import ru.thstdio.clientthbox.bus.event.LoginEvent;
+import ru.thstdio.clientthbox.bus.event.RemoveFileEvent;
 import ru.thstdio.clientthbox.bus.event.SignUp;
 import ru.thstdio.clientthbox.bus.event.SignUpFreeLogin;
 import ru.thstdio.clientthbox.connect.message.Message;
@@ -44,11 +45,11 @@ public class ConnectThBox extends Service {
     public static final int COMMAND_UPLOAD_FILE = 7;
     public static final int COMMAND_CREATE_FOLDER = 8;
     public static final int COMMAND_DELETE_FILE = 9;
-    public static final int COMMAND_DELETE_FOLDER = 9;
+    public static final int COMMAND_DELETE_FOLDER = 10;
     public static String KEY_USER_NAME = "KEY_USER_NAME";
     public static String KEY_USER_PASS = "KEY_USER_PASS";
     public static String KEY_FOLDER_ID = "KEY_FOLDER_ID";
-    public static String KEY_FILE_ID = "KEY_FOLDER_ID";
+    public static String KEY_FILE_ID = "KEY_FILE_ID";
     public static String KEY_FILE_NAME = "KEY_FILE_NAME";
     public static String KEY_FILE_URI = "KEY_FILE_URI";
     public static String KEY_STR = "KEY_STR";
@@ -109,8 +110,26 @@ public class ConnectThBox extends Service {
                 id = intent.getLongExtra(KEY_FOLDER_ID, 0);
                 createFolder(name, id);
                 break;
+            case COMMAND_DELETE_FILE:
+                long[] ids = intent.getLongArrayExtra(KEY_FILE_ID);
+                deleteFolder(ids);
+                break;
         }
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void deleteFolder(long[] ids) {
+        messHelper.ioMessage(Message.createMessage(MessageType.REQUEST_FILE_DELETE,MessageFile.idsToJsonString(ids)), new StringWainter() {
+            @Override
+            public void getString(String str) {
+                //todo error
+                if (str == null) return;
+                String status = ParserJson.parseRequest(MessageType.REQUEST_FILE_DELETE, str);
+                if (status.equals(MessageStatus.OK)) {             }
+                BusProvider.getInstance().post(
+                        new RemoveFileEvent(true));
+            }
+        });
     }
 
     private void createFolder(String name, final long idFolderParents) {
@@ -118,7 +137,7 @@ public class ConnectThBox extends Service {
             @Override
             public void getString(String str) {
                 if (str == null) return;
-                String status=ParserJson.parseRequest(MessageType.REQUEST_FOLDER_CREATE,str);
+                String status = ParserJson.parseRequest(MessageType.REQUEST_FOLDER_CREATE, str);
                 if (status.equals(MessageStatus.OK)) {
                     getFolder(idFolderParents);
                 }
@@ -132,7 +151,7 @@ public class ConnectThBox extends Service {
             public void getString(String str) {
                 //todo error
                 if (str == null) return;
-                String status=ParserJson.parseRequest(MessageType.REQUEST_FILE_UPLOAD,str);
+                String status = ParserJson.parseRequest(MessageType.REQUEST_FILE_UPLOAD, str);
                 if (status.equals(MessageStatus.OK)) {
                     messHelper.ioMessageUpLoad(file, idFolder, new ObjectWainter() {
                         @Override
@@ -152,9 +171,10 @@ public class ConnectThBox extends Service {
         messHelper.ioMessageLoad(Message.createMessage(MessageType.REQUEST_FILE_DOWNLOAD, String.valueOf(id)), nameFile, new ObjectWainter() {
             @Override
             public void getObject(Object object) {
-                Intent i=FileType.convertToIntent((String)object);
-                PackageManager packageManager = getPackageManager(); if (i.resolveActivity(packageManager) != null)
-                    startActivity(FileType.convertToIntent((String)object));
+                Intent i = FileType.convertToIntent((String) object);
+                PackageManager packageManager = getPackageManager();
+                if (i.resolveActivity(packageManager) != null)
+                    startActivity(FileType.convertToIntent((String) object));
             }
         });
     }
@@ -222,12 +242,12 @@ public class ConnectThBox extends Service {
                     Log.d("Connect", "Reconnect " + ex.getStatus());
                 }
             }
-        }, 30000);
+        }, 10000);
     }
 
     private void login(String name, String pass) {
         User user = new User(name, pass);
-         messHelper.ioMessage(Message.createMessage(MessageType.AUTH, user.getJson()), new StringWainter() {
+        messHelper.ioMessage(Message.createMessage(MessageType.AUTH, user.getJson()), new StringWainter() {
             @Override
             public void getString(String str) {
                 BusProvider.getInstance().post(new LoginEvent(

@@ -2,6 +2,8 @@ package ru.thstdio.clientthbox.ui.fragment;
 
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -15,12 +17,14 @@ public class RecyclerViewHolders extends RecyclerView.ViewHolder implements View
 
     public TextView name;
     public ImageView icon;
+    public CheckBox box;
     public boolean isFolder=false;
     public long id;
     OnClickHolderItem click;
 
     public interface OnClickHolderItem {
         void onClickHolderItem(long id, String text, boolean isFolder);
+        void onCheckHolderItem(long id,boolean isChecked);
     }
 
     public RecyclerViewHolders(View itemView) {
@@ -28,6 +32,14 @@ public class RecyclerViewHolders extends RecyclerView.ViewHolder implements View
         itemView.setOnClickListener(this);
         name = (TextView)itemView.findViewById(R.id.name_file);
         icon = (ImageView)itemView.findViewById(R.id.ic_file);
+        box = itemView.findViewById(R.id.checkBox);
+        box.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+              click.onCheckHolderItem(id,b);
+            }
+        });
+
     }
 
     @Override

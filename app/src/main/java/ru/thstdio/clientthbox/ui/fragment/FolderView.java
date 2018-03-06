@@ -25,8 +25,11 @@ import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import butterknife.BindDrawable;
 import butterknife.BindView;
@@ -34,6 +37,7 @@ import butterknife.ButterKnife;
 import ru.thstdio.clientthbox.R;
 import ru.thstdio.clientthbox.bus.BusProvider;
 import ru.thstdio.clientthbox.bus.event.FolderLoadEvent;
+import ru.thstdio.clientthbox.bus.event.RemoveFileEvent;
 import ru.thstdio.clientthbox.connect.ConnectThBox;
 import ru.thstdio.clientthbox.fileutil.FileType;
 import ru.thstdio.clientthbox.fileutil.PDir;
@@ -68,7 +72,7 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
     Map<FileType, Drawable> icon = new HashMap<FileType, Drawable>();
     PDir root;
     List<PFile> fileItem;
-
+    Set<Long> checkedFile = new HashSet<>();
     RecyclerViewAdapter rcAdapter;
     public FragmentCallback callback;
 
@@ -135,6 +139,16 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
         rView.setAdapter(rcAdapter);
     }
 
+    @Subscribe
+    public void onRemoveFiles(@NonNull RemoveFileEvent event) {
+        List<PFile> toRemove = new LinkedList<>();
+        for (PFile f : fileItem) if (checkedFile.contains(f.id)) toRemove.add(f);
+        fileItem.removeAll(toRemove);
+        checkedFile.clear();
+        rcAdapter = new RecyclerViewAdapter(getContext(), fileItem, icon, this);
+        rView.setAdapter(rcAdapter);
+    }
+
     public void createAdapter() {
         if (root != null) {
             if (fileItem == null) fileItem = new ArrayList<>();
@@ -149,12 +163,20 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
 
     @Override
     public void onClickHolderItem(long id, String name, boolean isFolder) {
-        if (isFolder) sendRequest(id);
-        else loadFile(id,name);
+        if (isFolder) {
+            sendRequest(id);
+            checkedFile.clear();
+        } else loadFile(id, name);
         Toast.makeText(getContext(), "Clicked ID = " + id, Toast.LENGTH_SHORT).show();
     }
 
-    private void loadFile(long id,String name) {
+    @Override
+    public void onCheckHolderItem(long id, boolean isChecked) {
+        if (isChecked) checkedFile.add(id);
+        else checkedFile.remove(id);
+    }
+
+    private void loadFile(long id, String name) {
         Intent intent = new Intent(getContext(), ConnectThBox.class);
         intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_DOWNLOAD_FILE);
         intent.putExtra(ConnectThBox.KEY_FILE_ID, id);
@@ -171,26 +193,44 @@ public class FolderView extends Fragment implements RecyclerViewHolders.OnClickH
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-       // super.onCreateOptionsMenu(menu, inflater);
-         inflater.inflate(R.menu.folder_view_menu, menu);
+        // super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.folder_view_menu, menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        createFolder();
+        switch (item.getItemId()) {
+            case R.id.action_add_folder:
+                createFolder();
+                break;
+            case R.id.action_del:
+                deleteCheckFiles();
+                break;
+        }
+
         return super.onOptionsItemSelected(item);
 
     }
 
-    void createFolder(){
+    private void deleteCheckFiles() {
+        Intent intent = new Intent(getContext(), ConnectThBox.class);
+        intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_DELETE_FILE);
+        long[] ids = new long[checkedFile.size()];
+        int i = 0;
+        for (Long l : checkedFile) ids[i++] = l;
+        intent.putExtra(ConnectThBox.KEY_FILE_ID, ids);
+        getActivity().startService(intent);
+    }
+
+    void createFolder() {
         AlertDialog.Builder ad = new AlertDialog.Builder(getContext());
-        final EditText nameFolder=new EditText(getContext());
+        final EditText nameFolder = new EditText(getContext());
         ad.setView(nameFolder);
         ad.setMessage(getString(R.string.dialog_create_folder)); // сообщение
         ad.setPositiveButton(getString(R.string.dialog_create_folder_button_ok), new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                String text=nameFolder.getText().toString();
+                String text = nameFolder.getText().toString();
                 Intent intent = new Intent(getContext(), ConnectThBox.class);
                 intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_CREATE_FOLDER);
                 intent.putExtra(ConnectThBox.KEY_STR, text);

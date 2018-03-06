@@ -10,8 +10,8 @@ public class ObjectStream implements Stream {
     private ObjectOutputStream out;
     private Socket socket;
 
-   // private static final String SERVER_ADDR = "192.168.0.106";
-   private static final String SERVER_ADDR = "10.127.127.1";
+   private static final String SERVER_ADDR = "192.168.0.106";
+  // private static final String SERVER_ADDR = "10.127.127.1";
     private static final int SERVER_PORT = 8189;
 
     public ObjectStream()  {
