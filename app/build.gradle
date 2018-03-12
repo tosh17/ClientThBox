@@ -4,7 +4,7 @@ ext {
     _targetSdkVersion = 26
     _minSdkVersion = 19
     _targetSdkVersion = 26
-    _versionName = '1.0.041'
+    _versionName = '1.0.042'
     _versionCode = 16
 
     _supportLibVersion = '26.1.0'

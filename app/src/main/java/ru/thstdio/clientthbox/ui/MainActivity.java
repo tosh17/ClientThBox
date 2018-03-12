@@ -2,9 +2,12 @@ package ru.thstdio.clientthbox.ui;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.annotation.UiThread;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -20,14 +23,19 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 
 import com.nononsenseapps.filepicker.FilePickerActivity;
 import com.nononsenseapps.filepicker.Utils;
+import com.squareup.otto.Subscribe;
 
 import java.io.File;
 import java.util.List;
 
 import ru.thstdio.clientthbox.R;
+import ru.thstdio.clientthbox.bus.BusProvider;
+import ru.thstdio.clientthbox.bus.event.DiskSizeEvent;
+import ru.thstdio.clientthbox.bus.event.LogOutEvent;
 import ru.thstdio.clientthbox.connect.ConnectThBox;
 import ru.thstdio.clientthbox.fileutil.PDir;
 import ru.thstdio.clientthbox.ui.fragment.FolderView;
@@ -35,7 +43,7 @@ import ru.thstdio.clientthbox.ui.fragment.FolderView;
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, FolderView.FragmentCallback {
 
-
+    TextView textSize;
     public static final String KEY_USER_NAME = "user_name";
     FragmentManager fm;
     private Menu menu;
@@ -43,7 +51,7 @@ public class MainActivity extends AppCompatActivity
     boolean isRootFolder = true;
     Fragment fragment;
     private int FILE_CODE = 1;
-    private long currentFolder=0;
+    private long currentFolder = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +59,7 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
+        BusProvider.getInstance().register(this);
         onSupportNavigateUp();
         fm = getSupportFragmentManager();
         fragment = fm.findFragmentById(R.id.fragmentContainer);
@@ -61,6 +69,7 @@ public class MainActivity extends AppCompatActivity
                     .add(R.id.fragmentContainer, fragment)
                     .commit();
             setTitle(getIntent().getStringExtra(KEY_USER_NAME));
+
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeButtonEnabled(true);
 
@@ -75,6 +84,13 @@ public class MainActivity extends AppCompatActivity
         toggle.syncState();
         drawer.addDrawerListener(toggle);
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        View headerLayout = navigationView.getHeaderView(0);
+        TextView textLogin = (TextView) headerLayout.findViewById(R.id.txtLogin);
+        textLogin.setText(getIntent().getStringExtra(KEY_USER_NAME));
+        Intent intent = new Intent(this, ConnectThBox.class);
+        intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_DISK_SIZE);
+        startService(intent);
+        textSize = (TextView) headerLayout.findViewById(R.id.txtSize);
         navigationView.setNavigationItemSelectedListener(this);
         toolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
@@ -164,18 +180,12 @@ public class MainActivity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
-        if (id == R.id.nav_camera) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
+        if (id == R.id.nav_bin) {
 
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
+        } else if (id == R.id.nav_logout) {
+            Intent intent = new Intent(this, ConnectThBox.class);
+            intent.putExtra(ConnectThBox.KEY_COMMAND, ConnectThBox.COMMAND_LOGOUT);
+            startService(intent);
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -187,7 +197,7 @@ public class MainActivity extends AppCompatActivity
     @UiThread
     public void setFragmentTitle(PDir root) {
         isRootFolder = root.id == 0;
-        currentFolder=root.id;
+        currentFolder = root.id;
         if (isRootFolder) {
             toolbar.setNavigationIcon(R.drawable.ic_humburger);
             setTitle("");
@@ -214,5 +224,35 @@ public class MainActivity extends AppCompatActivity
                 startService(intentToServer);
             }
         }
+    }
+
+    @Subscribe
+    public void onLogOut(@NonNull LogOutEvent event) {
+        SharedPreferences preff = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor edit = preff.edit();
+        edit.putString("UserName", "");
+        edit.putString("UserPass", "");
+        edit.commit();
+        Intent intent = new Intent(this, Login.class);
+        startActivity(intent);
+        this.finish();
+    }
+    @Subscribe
+    public void onDiskSize(@NonNull DiskSizeEvent event) {
+        String str ="";
+        int size=0;
+        if(event.size<1024){
+           size= (int) event.size;
+            str=" Byte";
+        }
+        else if(event.size<1024*1024){
+            size= (int) event.size/1024;
+            str=" Kb";
+        }
+        else if(event.size<1024*1024*1024){
+            size= (int) event.size/(1024*1024);
+            str=" Mb";
+        }
+        textSize.setText(String.valueOf(size)+str);
     }
 }

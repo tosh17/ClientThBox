@@ -14,7 +14,9 @@ import java.util.TimerTask;
 
 import ru.thstdio.clientthbox.bus.BusProvider;
 import ru.thstdio.clientthbox.bus.event.ConnectEvent;
+import ru.thstdio.clientthbox.bus.event.DiskSizeEvent;
 import ru.thstdio.clientthbox.bus.event.FolderLoadEvent;
+import ru.thstdio.clientthbox.bus.event.LogOutEvent;
 import ru.thstdio.clientthbox.bus.event.LoginEvent;
 import ru.thstdio.clientthbox.bus.event.RemoveFileEvent;
 import ru.thstdio.clientthbox.bus.event.SignUp;
@@ -46,6 +48,8 @@ public class ConnectThBox extends Service {
     public static final int COMMAND_CREATE_FOLDER = 8;
     public static final int COMMAND_DELETE_FILE = 9;
     public static final int COMMAND_DELETE_FOLDER = 10;
+    public static final int COMMAND_DISK_SIZE = 11;
+    public static final int COMMAND_LOGOUT = 12;
     public static String KEY_USER_NAME = "KEY_USER_NAME";
     public static String KEY_USER_PASS = "KEY_USER_PASS";
     public static String KEY_FOLDER_ID = "KEY_FOLDER_ID";
@@ -53,6 +57,7 @@ public class ConnectThBox extends Service {
     public static String KEY_FILE_NAME = "KEY_FILE_NAME";
     public static String KEY_FILE_URI = "KEY_FILE_URI";
     public static String KEY_STR = "KEY_STR";
+
     private Stream stream;
     private PDir localFolder;
     private MessageIO messHelper;
@@ -81,6 +86,12 @@ public class ConnectThBox extends Service {
                 name = intent.getStringExtra(KEY_USER_NAME);
                 pass = intent.getStringExtra(KEY_USER_PASS);
                 login(name, pass);
+                break;
+            case COMMAND_LOGOUT:
+                logout();
+                break;
+            case COMMAND_DISK_SIZE:
+                diskSize();
                 break;
             case COMMAND_SIGN_UP:
                 name = intent.getStringExtra(KEY_USER_NAME);
@@ -118,14 +129,42 @@ public class ConnectThBox extends Service {
         return super.onStartCommand(intent, flags, startId);
     }
 
+    private void diskSize() {
+        messHelper.ioMessage(Message.createMessage(MessageType.REQUEST_DISK_SIZE, ""), new StringWainter() {
+            @Override
+            public void getString(String str) {
+                if (str == null) return;
+                String status = ParserJson.parseRequest(MessageType.REQUEST_DISK_SIZE, str);
+                BusProvider.getInstance().post(
+                            new DiskSizeEvent(Long.parseLong(status)));
+
+            }
+        });
+    }
+
+    private void logout() {
+        messHelper.ioMessage(Message.createMessage(MessageType.LOG_OUT, ""), new StringWainter() {
+            @Override
+            public void getString(String str) {
+                if (str == null) return;
+                String status = ParserJson.parseRequest(MessageType.LOG_OUT, str);
+                if (status.equals(MessageStatus.OK)) {
+                    BusProvider.getInstance().post(
+                            new LogOutEvent());
+                }
+            }
+        });
+    }
+
     private void deleteFolder(long[] ids) {
-        messHelper.ioMessage(Message.createMessage(MessageType.REQUEST_FILE_DELETE,MessageFile.idsToJsonString(ids)), new StringWainter() {
+        messHelper.ioMessage(Message.createMessage(MessageType.REQUEST_FILE_DELETE, MessageFile.idsToJsonString(ids)), new StringWainter() {
             @Override
             public void getString(String str) {
                 //todo error
                 if (str == null) return;
                 String status = ParserJson.parseRequest(MessageType.REQUEST_FILE_DELETE, str);
-                if (status.equals(MessageStatus.OK)) {             }
+                if (status.equals(MessageStatus.OK)) {
+                }
                 BusProvider.getInstance().post(
                         new RemoveFileEvent(true));
             }
